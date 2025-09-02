@@ -5,6 +5,13 @@ import { KJUR } from 'jsrsasign'
 import { inNumberArray, isBetween, isRequiredAllOrNone, validateRequest } from './validations.js'
 
 dotenv.config()
+
+// Validate required environment variables
+if (!process.env.ZOOM_MEETING_SDK_KEY || !process.env.ZOOM_MEETING_SDK_SECRET) {
+  console.error('Error: ZOOM_MEETING_SDK_KEY and ZOOM_MEETING_SDK_SECRET must be set in environment variables')
+  process.exit(1)
+}
+
 const app = express()
 const port = process.env.PORT || 4000
 
@@ -53,8 +60,14 @@ app.post('/', (req, res) => {
 
   const sHeader = JSON.stringify(oHeader)
   const sPayload = JSON.stringify(oPayload)
-  const sdkJWT = KJUR.jws.JWS.sign('HS256', sHeader, sPayload, process.env.ZOOM_MEETING_SDK_SECRET)
-  return res.json({ signature: sdkJWT, sdkKey: process.env.ZOOM_MEETING_SDK_KEY })
+
+  try {
+    const sdkJWT = KJUR.jws.JWS.sign('HS256', sHeader, sPayload, process.env.ZOOM_MEETING_SDK_SECRET)
+    return res.json({ signature: sdkJWT, sdkKey: process.env.ZOOM_MEETING_SDK_KEY })
+  } catch (error) {
+    console.error('JWT signing error:', error.message)
+    return res.status(500).json({ error: 'Failed to generate JWT token' })
+  }
 })
 
 app.listen(port, () => console.log(`Zoom Meeting SDK Auth Endpoint Sample Node.js, listening on port ${port}!`))
